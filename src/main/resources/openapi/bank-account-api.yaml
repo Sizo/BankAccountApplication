@@ -1,2 +1,143 @@
+openapi: 3.0.3
+info:
+  title: Bank Account API
+  description: API for bank account operations including withdrawals
+  version: 1.0.0
+  contact:
+    name: Bank Account Application
 
+servers:
+  - url: /api/v1
+    description: Default server
 
+paths:
+  /banks/withdrawals:
+    post:
+      tags:
+        - Bank Account
+      summary: Process a withdrawal
+      description: Process a withdrawal request for a bank account
+      operationId: withdraw
+      parameters:
+        - name: X-Trace-Id
+          in: header
+          description: Optional trace ID for tracking requests
+          required: false
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WithdrawalRequest'
+      responses:
+        '200':
+          description: Withdrawal processed successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WithdrawalResponse'
+        '400':
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '422':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+
+components:
+  schemas:
+    WithdrawalRequest:
+      type: object
+      required:
+        - accountNumber
+        - amount
+      properties:
+        accountNumber:
+          type: string
+          description: Account number for the withdrawal
+          minLength: 9
+          maxLength: 9
+          pattern: '^[0-9]{9}$'
+          example: "123456789"
+        amount:
+          type: number
+          format: double
+          description: Amount to withdraw
+          minimum: 0.01
+          example: 100.50
+        accountName:
+          type: string
+          description: Optional account name
+          example: "John Doe"
+        accountType:
+          type: string
+          description: Optional account type
+          example: "SAVINGS"
+        customerId:
+          type: string
+          description: Optional customer ID
+          example: "CUST123"
+
+    WithdrawalResponse:
+      type: object
+      properties:
+        accountNumber:
+          type: string
+          description: Account number
+          example: "123456789"
+        amountWithdrawn:
+          type: number
+          format: double
+          description: Amount that was withdrawn
+          example: 100.50
+        currentBalance:
+          type: number
+          format: double
+          description: Current balance after withdrawal
+          example: 899.50
+        message:
+          type: string
+          description: Status message
+          example: "Withdrawal successful"
+
+    Problem:
+      type: object
+      description: Problem details response following RFC 7807
+      properties:
+        type:
+          type: string
+          description: URI reference that identifies the problem type
+          example: "https://example.com/probs/validation-error"
+        title:
+          type: string
+          description: Short, human-readable summary of the problem type
+          example: "Validation Error"
+        status:
+          type: integer
+          description: HTTP status code
+          example: 400
+        traceId:
+          type: string
+          description: Trace ID for request tracking
+          example: "abc123-def456"
+        detail:
+          type: string
+          description: Human-readable explanation specific to this occurrence
+          example: "Account number must be exactly 9 digits"
+        instance:
+          type: string
+          description: URI reference that identifies the specific occurrence
+          example: "/api/v1/banks/withdrawals"

@@ -3,6 +3,7 @@ plugins {
     id 'org.springframework.boot' version '3.5.5'
     id 'io.spring.dependency-management' version '1.1.7'
     id 'checkstyle'
+    id 'org.openapi.generator' version '7.0.1'
 }
 
 group = 'co.za.demo'
@@ -45,6 +46,11 @@ dependencies {
 
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
+
+    // OpenAPI dependencies
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+    implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
+    implementation 'io.swagger.core.v3:swagger-annotations:2.2.15'
 }
 
 tasks.named('test') {
@@ -72,3 +78,36 @@ tasks.register('checkstyleAll') {
 
 // Make general 'check' depend on style verification.
 tasks.named('check') { dependsOn 'checkstyleAll' }
+
+// OpenAPI Generator configuration
+openApiGenerate {
+    generatorName = "spring"
+    inputSpec = "$rootDir/src/main/resources/openapi/bank-account-api.yaml".toString()
+    outputDir = "$buildDir/generated".toString()
+    apiPackage = "co.za.demo.bankaccountapplication.api"
+    modelPackage = "co.za.demo.bankaccountapplication.model.dto"
+    configOptions = [
+        dateLibrary: "java8",
+        java8: "true",
+        delegatePattern: "true",
+        useTags: "true",
+        interfaceOnly: "true",
+        skipDefaultInterface: "true",
+        useBeanValidation: "true",
+        performBeanValidation: "true",
+        useOptional: "false",
+        library: "spring-boot"
+    ]
+}
+
+// Add generated sources to the source sets
+sourceSets {
+    main {
+        java {
+            srcDir "$buildDir/generated/src/main/java"
+        }
+    }
+}
+
+// Make sure code generation runs before compilation
+compileJava.dependsOn tasks.openApiGenerate
