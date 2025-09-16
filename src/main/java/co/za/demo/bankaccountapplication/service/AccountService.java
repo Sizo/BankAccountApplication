@@ -44,7 +44,13 @@ public class AccountService {
     log.info("Withdrawal successful. New balance for account {}: {}",
         withdrawalDo.getAccountNumber(), newBalance);
 
-    return new WithdrawalResponse("SUCCESS", newBalance);
+    // Create response using proper setter methods (not method chaining)
+    var withdrawalResponse = new WithdrawalResponse();
+    withdrawalResponse.setAccountNumber(withdrawalDo.getAccountNumber());
+    withdrawalResponse.setAmountWithdrawn(withdrawalDo.getAmount().toPlainString());
+    withdrawalResponse.setCurrentBalance(newBalance.toPlainString());
+    withdrawalResponse.setMessage("SUCCESS");
+    return withdrawalResponse;
   }
 
   private static BigDecimal getAndCalculateNewBalance(WithdrawalDo withdrawalDo, Account account) {

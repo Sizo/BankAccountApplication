@@ -73,11 +73,10 @@ components:
           pattern: '^[0-9]{9}$'
           example: "123456789"
         amount:
-          type: number
-          format: double
-          description: Amount to withdraw
-          minimum: 0.01
-          example: 100.50
+          type: string
+          description: Amount to withdraw as string to preserve precision (must be positive)
+          pattern: '^[0-9]+(\.[0-9]+)?$'
+          example: "100.50"
         accountName:
           type: string
           description: Optional account name
@@ -99,15 +98,13 @@ components:
           description: Account number
           example: "123456789"
         amountWithdrawn:
-          type: number
-          format: double
-          description: Amount that was withdrawn
-          example: 100.50
+          type: string
+          description: Amount that was withdrawn as string to preserve precision
+          example: "100.50"
         currentBalance:
-          type: number
-          format: double
-          description: Current balance after withdrawal
-          example: 899.50
+          type: string
+          description: Current balance after withdrawal as string to preserve precision
+          example: "899.50"
         message:
           type: string
           description: Status message

@@ -3,7 +3,11 @@
     "-//Checkstyle//DTD SuppressionFilter Configuration 1.2//EN"
     "https://checkstyle.org/dtds/suppressions_1_2.dtd">
 <suppressions>
+    <!-- Suppress all checks for generated sources -->
+    <suppress files=".*[/\\]generated-sources[/\\].*" checks=".*" />
+    <suppress files=".*[/\\]build[/\\]generated.*" checks=".*" />
+    <suppress files=".*Generated.*\.java" checks=".*" />
+
     <!-- Add path-based suppressions here, example:
     <suppress files=".*Generated.*" checks=".*" /> -->
 </suppressions>
-

@@ -70,17 +70,25 @@ public class GlobalExceptionHandler {
     // Get trace ID from request header or generate a new one if not present
     String traceId = getTraceId(request);
 
+    // Determine if this is a business validation error (422) or input validation error (400)
+    boolean isBusinessValidation = isBusinessValidationError(ex.getMessage());
+    HttpStatus status = isBusinessValidation
+        ? HttpStatus.UNPROCESSABLE_ENTITY : HttpStatus.BAD_REQUEST;
+
+    String title = isBusinessValidation ? "Business Validation Failed" : "Invalid Input";
+    String type = isBusinessValidation ? "BusinessValidationError" : "IllegalArgumentException";
+
     Problem problem = new Problem();
-    problem.setType("IllegalArgumentException");
-    problem.setTitle("Invalid Input");
-    problem.setStatus(HttpStatus.BAD_REQUEST.value());
+    problem.setType(type);
+    problem.setTitle(title);
+    problem.setStatus(status.value());
     problem.setDetail(ex.getMessage());
     problem.setInstance(request.getDescription(false));
     problem.setTraceId(traceId);
 
-    log.error("Invalid input [{}]: {}", traceId, ex.getMessage(), ex);
+    log.error("{} [{}]: {}", title, traceId, ex.getMessage(), ex);
 
-    return new ResponseEntity<>(problem, HttpStatus.BAD_REQUEST);
+    return new ResponseEntity<>(problem, status);
   }
 
   /**
@@ -149,7 +157,7 @@ public class GlobalExceptionHandler {
       MethodArgumentNotValidException ex, WebRequest request) {
 
     String errorMessage = ex.getBindingResult().getFieldErrors().stream()
-        .map(error -> error.getField() + ": " + error.getDefaultMessage())
+        .map(this::getHumanReadableErrorMessage)
         .collect(Collectors.joining(", "));
 
     // Get trace ID from request header or generate a new one if not present
@@ -169,6 +177,51 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Converts technical validation error messages to human-readable ones.
+   *
+   * @param error the field error from validation
+   * @return a human-readable error message
+   */
+  private String getHumanReadableErrorMessage(
+      org.springframework.validation.FieldError error) {
+    String field = error.getField();
+    String defaultMessage = error.getDefaultMessage();
+
+    if ("amount".equals(field) && defaultMessage != null) {
+      if (defaultMessage.contains("must match")) {
+        return "amount: must be a positive number (e.g., 100.50)";
+      }
+    }
+
+    if ("accountNumber".equals(field) && defaultMessage != null) {
+      if (defaultMessage.contains("must match")) {
+        return "accountNumber: must be exactly 9 digits";
+      }
+    }
+
+    return field + ": " + cleanValidationMessage(defaultMessage);
+  }
+
+  /**
+   * Cleans up technical validation messages to be more user-friendly.
+   *
+   * @param message the original validation message
+   * @return a cleaned, more readable message
+   */
+  private String cleanValidationMessage(String message) {
+    if (message == null) {
+      return "is invalid";
+    }
+
+    // Replace regex pattern messages with user-friendly ones
+    if (message.contains("must match")) {
+      return "has an invalid format";
+    }
+
+    return message;
+  }
+
+  /**
    * Gets the trace ID from the request header or generates a new one if not present.
    *
    * @param request the web request
@@ -180,5 +233,24 @@ public class GlobalExceptionHandler {
       traceId = UUID.randomUUID().toString();
     }
     return traceId;
+  }
+
+  /**
+   * Determines if an exception message represents a business validation error.
+   *
+   * @param message the exception message
+   * @return true if this is a business validation error, false otherwise
+   */
+  private boolean isBusinessValidationError(String message) {
+    if (message == null) {
+      return false;
+    }
+
+    // Business validation errors that should return 422
+    return message.contains("Insufficient funds")
+        || message.contains("Account not found")
+        || message.contains("Account is closed")
+        || message.contains("Daily limit exceeded")
+        || message.contains("Transaction not allowed");
   }
 }

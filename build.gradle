@@ -6,6 +6,9 @@ plugins {
     id 'org.openapi.generator' version '7.0.1'
 }
 
+// Import the GenerateTask class
+import org.openapitools.generator.gradle.plugin.tasks.GenerateTask
+
 group = 'co.za.demo'
 version = '0.0.1-SNAPSHOT'
 description = 'BankAccountApplication'
@@ -48,7 +51,6 @@ dependencies {
     testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
     // OpenAPI dependencies
-    implementation 'org.springframework.boot:spring-boot-starter-validation'
     implementation 'org.openapitools:jackson-databind-nullable:0.2.6'
     implementation 'io.swagger.core.v3:swagger-annotations:2.2.15'
 }
@@ -79,35 +81,42 @@ tasks.register('checkstyleAll') {
 // Make general 'check' depend on style verification.
 tasks.named('check') { dependsOn 'checkstyleAll' }
 
-// OpenAPI Generator configuration
-openApiGenerate {
-    generatorName = "spring"
-    inputSpec = "$rootDir/src/main/resources/openapi/bank-account-api.yaml".toString()
-    outputDir = "$buildDir/generated".toString()
-    apiPackage = "co.za.demo.bankaccountapplication.api"
-    modelPackage = "co.za.demo.bankaccountapplication.model.dto"
-    configOptions = [
-        dateLibrary: "java8",
-        java8: "true",
-        delegatePattern: "true",
-        useTags: "true",
-        interfaceOnly: "true",
-        skipDefaultInterface: "true",
-        useBeanValidation: "true",
-        performBeanValidation: "true",
-        useOptional: "false",
-        library: "spring-boot"
-    ]
+// OpenAPI Generator task following your pattern
+tasks.register("generateBankAccountSpecification", GenerateTask) {
+    generatorName.set("spring")
+    inputSpec.set("$rootDir/src/main/resources/openapi/bank-account-api.yaml")
+    outputDir.set("$buildDir/generated-sources/openapi")
+    modelPackage.set("co.za.demo.bankaccountapplication.model.dto")
+    apiPackage.set("co.za.demo.bankaccountapplication.api")
+    configOptions.set([
+        "openApiNullable": "false",
+        "interfaceOnly": "true",
+        "dateLibrary": "java8",
+        "useJakartaEe": "true",
+        "useTags": "true",
+        "useSpringBoot3": "true",
+        "delegatePattern": "true",
+        "skipDefaultInterface": "true",
+        "useBeanValidation": "true",
+        "performBeanValidation": "true"
+    ])
+    generateModelTests = false
+    skipValidateSpec = true
 }
 
 // Add generated sources to the source sets
 sourceSets {
     main {
         java {
-            srcDir "$buildDir/generated/src/main/java"
+            srcDir "$buildDir/generated-sources/openapi/src/main/java"
         }
     }
 }
 
-// Make sure code generation runs before compilation
-compileJava.dependsOn tasks.openApiGenerate
+// Make sure code generation runs before any compilation task
+tasks.withType(JavaCompile).configureEach {
+    dependsOn tasks.generateBankAccountSpecification
+}
+
+// Also ensure it runs before processing resources and other compile tasks
+compileJava.dependsOn tasks.generateBankAccountSpecification
