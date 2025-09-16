@@ -39,26 +39,8 @@ spring:
   transaction:
     default-timeout: 30
 
-# Database Abstraction Configuration
+# Application Configuration
 app:
-  database:
-    engine: h2
-    show-sql: true
-    ddl-auto: create-drop
-    connection-pool:
-      enabled: true
-      maximum-pool-size: 10
-      minimum-idle: 2
-      connection-timeout: 20000
-      idle-timeout: 300000
-      max-lifetime: 1200000
-    performance:
-      batch-size: 25
-      order-inserts: true
-      order-updates: true
-      batch-versioned-data: true
-      use-second-level-cache: false
-
   sns:
     withdrawal-topic: arn:aws:sns:us-east-1:123456789012:withdrawal-events
   demo:
@@ -79,6 +61,7 @@ springdoc:
     operations-sorter: method
     tags-sorter: alpha
     display-request-duration: true
+  show-actuator: true
 
 # Resilience4j Configuration
 resilience4j:
@@ -158,3 +141,7 @@ management:
       enabled: true
     retries:
       enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true
