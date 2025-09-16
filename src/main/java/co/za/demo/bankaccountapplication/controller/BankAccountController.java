@@ -6,6 +6,7 @@ import co.za.demo.bankaccountapplication.model.domain.WithdrawalDo;
 import co.za.demo.bankaccountapplication.model.dto.WithdrawalRequest;
 import co.za.demo.bankaccountapplication.model.dto.WithdrawalResponse;
 import co.za.demo.bankaccountapplication.service.AccountService;
+import co.za.demo.bankaccountapplication.service.TransactionEventService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -24,12 +25,13 @@ public class BankAccountController implements BankAccountApi {
 
   private final AccountService accountService;
   private final WithdrawalMapper withdrawalMapper;
+  private final TransactionEventService transactionEventService;
 
   /**
    * Implementation of the generated API interface method for withdrawal processing.
    *
    * @param withdrawalRequest the withdrawal request payload
-   * @param traceId optional trace ID for tracking requests
+   * @param traceId           optional trace ID for tracking requests
    * @return the response entity containing the withdrawal result
    */
   @Override
@@ -51,6 +53,13 @@ public class BankAccountController implements BankAccountApi {
 
     // Process the withdrawal using the domain object
     WithdrawalResponse result = accountService.processWithdrawal(withdrawalDo);
+
+    // Publish successful withdrawal event
+    transactionEventService.publishWithdrawalEvent(
+        withdrawalRequest.getAccountNumber(),
+        withdrawalRequest.getAmount(),
+        "SUCCESS");
+
     return ResponseEntity.ok(result);
   }
 }

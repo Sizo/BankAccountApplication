@@ -1,10 +1,13 @@
 package co.za.demo.bankaccountapplication.exception;
 
 import co.za.demo.bankaccountapplication.model.dto.Problem;
+import co.za.demo.bankaccountapplication.service.TransactionEventService;
 import jakarta.persistence.EntityNotFoundException;
 import jakarta.validation.ConstraintViolationException;
+import java.math.BigDecimal;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -19,11 +22,14 @@ import org.springframework.web.context.request.WebRequest;
  */
 @Slf4j
 @ControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
   /**
    * Header name for trace ID.
    */
   private static final String TRACE_ID_HEADER = "X-Trace-Id";
+
+  private final TransactionEventService transactionEventService;
 
   /**
    * Handles validation errors for method parameters.
@@ -40,7 +46,6 @@ public class GlobalExceptionHandler {
         .map(violation -> violation.getPropertyPath() + ": " + violation.getMessage())
         .collect(Collectors.joining(", "));
 
-    // Get trace ID from request header or generate a new one if not present
     String traceId = getTraceId(request);
 
     Problem problem = new Problem();
@@ -67,7 +72,6 @@ public class GlobalExceptionHandler {
   public ResponseEntity<Problem> handleIllegalArgumentException(
       IllegalArgumentException ex, WebRequest request) {
 
-    // Get trace ID from request header or generate a new one if not present
     String traceId = getTraceId(request);
 
     // Determine if this is a business validation error (422) or input validation error (400)
@@ -87,6 +91,11 @@ public class GlobalExceptionHandler {
     problem.setTraceId(traceId);
 
     log.error("{} [{}]: {}", title, traceId, ex.getMessage(), ex);
+
+    // Publish event for business validation failures
+    if (isBusinessValidation) {
+      publishTransactionFailureEvent(traceId, ex.getMessage());
+    }
 
     return new ResponseEntity<>(problem, status);
   }
@@ -252,5 +261,95 @@ public class GlobalExceptionHandler {
         || message.contains("Account is closed")
         || message.contains("Daily limit exceeded")
         || message.contains("Transaction not allowed");
+  }
+
+  /**
+   * Publishes a transaction failure event for business validation errors.
+   *
+   * @param traceId the trace ID for correlation
+   * @param message the error message
+   */
+  private void publishTransactionFailureEvent(String traceId, String message) {
+    try {
+      // Extract account number and amount from error message
+      String accountNumber = extractAccountNumber(message);
+      BigDecimal amount = extractAmount(message);
+
+      if (accountNumber != null) {
+        log.info(
+            "Publishing failure event for business validation error - TraceId: {}, Account: {}",
+            traceId, accountNumber);
+        transactionEventService.publishWithdrawalEvent(accountNumber, amount, "FAILED");
+      } else {
+        log.warn("Cannot publish failure event - unable to extract account number from message: {}",
+            message);
+      }
+    } catch (Exception e) {
+      log.error("Failed to publish transaction failure event for traceId {}: {}", traceId,
+          e.getMessage(), e);
+    }
+  }
+
+  /**
+   * Extracts account number from error message.
+   *
+   * @param message the error message
+   * @return the account number or null if not found
+   */
+  private String extractAccountNumber(String message) {
+    if (message == null) {
+      return null;
+    }
+
+    // Look for patterns like "account: 123456789" or "Account not found: 123456789"
+    if (message.contains("account:")) {
+      String[] parts = message.split("account:");
+      if (parts.length > 1) {
+        String accountPart = parts[1].trim().split("[^0-9]")[0];
+        if (accountPart.length() == 9) { // Assuming 9-digit account numbers
+          return accountPart;
+        }
+      }
+    }
+
+    // Look for patterns like "Account not found: 123456789"
+    if (message.contains("Account not found:")) {
+      String[] parts = message.split("Account not found:");
+      if (parts.length > 1) {
+        String accountPart = parts[1].trim().split("[^0-9]")[0];
+        if (accountPart.length() == 9) {
+          return accountPart;
+        }
+      }
+    }
+
+    return null;
+  }
+
+  /**
+   * Extracts amount from error message.
+   *
+   * @param message the error message
+   * @return the amount or BigDecimal.ZERO if not found
+   */
+  private BigDecimal extractAmount(String message) {
+    if (message == null) {
+      return BigDecimal.ZERO;
+    }
+
+    // Look for patterns like "Requested amount: 100.50"
+    if (message.contains("Requested amount:")) {
+      String[] parts = message.split("Requested amount:");
+      if (parts.length > 1) {
+        try {
+          String amountStr = parts[1].trim().split("[^0-9.]")[0];
+          return new BigDecimal(amountStr);
+        } catch (NumberFormatException e) {
+          log.warn("Failed to parse amount from message: {}", message);
+        }
+      }
+    }
+
+    return BigDecimal.ZERO;
   }
 }
