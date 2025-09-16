@@ -186,6 +186,35 @@ public class GlobalExceptionHandler {
   }
 
   /**
+   * Handles infrastructure/service temporarily unavailable exceptions.
+   *
+   * @param ex      the ServiceTemporarilyUnavailableException
+   * @param request the web request
+   * @return a ResponseEntity containing the Problem details with HTTP 503
+   */
+  @ExceptionHandler(ServiceTemporarilyUnavailableException.class)
+  public ResponseEntity<Problem> handleServiceTemporarilyUnavailableException(
+      ServiceTemporarilyUnavailableException ex, WebRequest request) {
+
+    String traceId = getTraceId(request);
+
+    Problem problem = new Problem();
+    problem.setType("ServiceTemporarilyUnavailable");
+    problem.setTitle("Service Temporarily Unavailable");
+    problem.setStatus(HttpStatus.SERVICE_UNAVAILABLE.value());
+    problem.setDetail(ex.getMessage());
+    problem.setInstance(request.getDescription(false));
+    problem.setTraceId(traceId);
+
+    log.error("Service temporarily unavailable [{}]: {}", traceId, ex.getMessage(), ex);
+
+    // Add Retry-After header suggesting client should retry after 30 seconds
+    return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE)
+        .header("Retry-After", "30")
+        .body(problem);
+  }
+
+  /**
    * Converts technical validation error messages to human-readable ones.
    *
    * @param error the field error from validation

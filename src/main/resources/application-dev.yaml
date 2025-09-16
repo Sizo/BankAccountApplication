@@ -1,0 +1,82 @@
+# Development Environment Configuration
+
+# Enhanced Logging for Development
+logging:
+  level:
+    co.za.demo.bankaccountapplication: DEBUG
+    org.springframework.web: DEBUG
+    org.springframework.transaction: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+spring:
+  # JPA and Database Settings for Development
+  jpa:
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        jdbc:
+          batch_size: 10
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        connection:
+          isolation: 2
+        cache:
+          use_second_level_cache: false
+
+  # H2 Console enabled for development
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+      settings:
+        web-allow-others: true
+
+  # Connection Pool Settings for Development
+  datasource:
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+      leak-detection-threshold: 60000
+
+  transaction:
+    default-timeout: 30
+
+# Development-specific Application Settings
+app:
+  sns:
+    withdrawal-topic: arn:aws:sns:us-east-1:123456789012:withdrawal-events-dev
+  demo:
+    sns:
+      enabled: true
+      simulate-delay: true
+      failure-rate: 0.1
+
+# Actuator endpoints for development debugging
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+  endpoint:
+    health:
+      show-details: always
+    metrics:
+      enabled: true
+    info:
+      enabled: true
+
+# Development-specific resilience settings (more lenient)
+resilience4j:
+  retry:
+    instances:
+      accountService:
+        max-attempts: 2

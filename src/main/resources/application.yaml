@@ -1,0 +1,160 @@
+spring:
+  application:
+    name: BankAccountApplication
+
+  # H2 Database Configuration
+  datasource:
+    url: jdbc:h2:mem:bankdb
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: ""
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+
+  h2:
+    console:
+      enabled: true
+      path: /h2-console
+
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    show-sql: true
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        format_sql: true
+        connection:
+          isolation: 2
+        jdbc:
+          batch_versioned_data: true
+          batch_size: 10
+        order_inserts: true
+        order_updates: true
+
+  transaction:
+    default-timeout: 30
+
+# Database Abstraction Configuration
+app:
+  database:
+    engine: h2
+    show-sql: true
+    ddl-auto: create-drop
+    connection-pool:
+      enabled: true
+      maximum-pool-size: 10
+      minimum-idle: 2
+      connection-timeout: 20000
+      idle-timeout: 300000
+      max-lifetime: 1200000
+    performance:
+      batch-size: 25
+      order-inserts: true
+      order-updates: true
+      batch-versioned-data: true
+      use-second-level-cache: false
+
+  sns:
+    withdrawal-topic: arn:aws:sns:us-east-1:123456789012:withdrawal-events
+  demo:
+    sns:
+      enabled: true
+      simulate-delay: true
+      failure-rate: 0.05
+  version: 0.0.1-SNAPSHOT
+
+# Swagger UI Configuration
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    try-it-out-enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+    display-request-duration: true
+
+# Resilience4j Configuration
+resilience4j:
+  retry:
+    instances:
+      accountService:
+        max-attempts: 3
+        wait-duration: 500ms
+        exponential-backoff-multiplier: 2
+        retry-exceptions:
+          - java.lang.Exception
+          - jakarta.persistence.OptimisticLockException
+        ignore-exceptions:
+          - java.lang.IllegalArgumentException
+      database-operations:
+        max-attempts: 3
+        wait-duration: 1s
+        exponential-backoff-multiplier: 1.5
+      external-service:
+        max-attempts: 5
+        wait-duration: 1s
+        exponential-backoff-multiplier: 1.5
+        retry-exceptions:
+          - co.za.demo.bankaccountapplication.exception.EventPublishingException
+          - java.lang.RuntimeException
+
+  circuitbreaker:
+    instances:
+      accountService:
+        sliding-window-size: 10
+        minimum-number-of-calls: 5
+        failure-rate-threshold: 50
+        wait-duration-in-open-state: 30s
+        permitted-number-of-calls-in-half-open-state: 3
+      external-service:
+        sliding-window-size: 20
+        minimum-number-of-calls: 10
+        failure-rate-threshold: 60
+        wait-duration-in-open-state: 60s
+        permitted-number-of-calls-in-half-open-state: 5
+    metrics:
+      enabled: true
+
+  ratelimiter:
+    instances:
+      accountService:
+        limit-for-period: 10
+        limit-refresh-period: 1s
+        timeout-duration: 0s
+    metrics:
+      enabled: true
+
+  bulkhead:
+    instances:
+      accountService:
+        max-concurrent-calls: 5
+        max-wait-duration: 1s
+      external-service:
+        max-concurrent-calls: 3
+        max-wait-duration: 2s
+
+# Management and Monitoring
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,circuitbreakers,ratelimiters,bulkheads,retries
+  endpoint:
+    health:
+      show-details: always
+  health:
+    circuitbreakers:
+      enabled: true
+    ratelimiters:
+      enabled: true
+    bulkheads:
+      enabled: true
+    retries:
+      enabled: true

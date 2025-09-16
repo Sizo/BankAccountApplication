@@ -1,0 +1,81 @@
+# Production Environment Configuration
+
+# Production Logging - Minimal for Performance
+logging:
+  level:
+    co.za.demo.bankaccountapplication: WARN
+    org.springframework.web: WARN
+    org.springframework.transaction: ERROR
+    org.hibernate: WARN
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} %-5level [%thread] %logger{20} - %msg%n"
+  file:
+    name: logs/bankapp.log
+    max-size: 10MB
+    max-history: 30
+
+spring:
+  # JPA and Database Settings for Production
+  jpa:
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: false
+        use_sql_comments: false
+        jdbc:
+          batch_size: 50
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        connection:
+          isolation: 2
+        cache:
+          use_second_level_cache: false
+
+  # H2 Console disabled for production security
+  h2:
+    console:
+      enabled: false
+
+  # Optimized Connection Pool Settings for Production
+  datasource:
+    hikari:
+      maximum-pool-size: 20
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 30000
+      pool-name: BankAppHikariCP
+
+  # Enhanced Transaction Management for Production
+  transaction:
+    default-timeout: 60
+    rollback-on-commit-failure: true
+
+# Production-specific Application Settings
+app:
+  sns:
+    withdrawal-topic: arn:aws:sns:us-east-1:123456789012:withdrawal-events-prod
+  demo:
+    sns:
+      enabled: false
+      simulate-delay: false
+      failure-rate: 0.0
+
+# Security settings for production
+server:
+  error:
+    include-stacktrace: never
+    include-message: never
+    include-binding-errors: never
+
+# Production Management Settings
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: when-authorized

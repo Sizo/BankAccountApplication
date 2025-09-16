@@ -119,13 +119,13 @@ public class SnsEventPublisher implements EventPublisher<WithdrawalEvent> {
 
     return switch (event.getStatus().toUpperCase()) {
       case "SUCCESS" -> String.format(
-          "BANK ALERT: Withdrawal of $%s from account %s was SUCCESSFUL. Available balance"
+          "BANK ALERT: Withdrawal of R%s from account %s was SUCCESSFUL. Available balance"
               + " updated.", amount, accountMasked);
       case "DECLINED" -> String.format(
-          "BANK ALERT: Withdrawal of $%s from account %s was DECLINED due to insufficient funds.",
+          "BANK ALERT: Withdrawal of R%s from account %s was DECLINED due to insufficient funds.",
           amount, accountMasked);
       default -> String.format(
-          "BANK ALERT: Withdrawal transaction of $%s attempted on account %s.",
+          "BANK ALERT: Withdrawal transaction of R%s attempted on account %s.",
           amount, accountMasked);
     };
   }
